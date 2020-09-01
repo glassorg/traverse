@@ -1,0 +1,19 @@
+{
+  "name": "@glas/traverse",
+  "version": "1.0.3",
+  "description": "Library for traversing immutable trees and returning modified trees",
+  "main": "lib/index.js",
+  "repository": "https://github.com/glassorg/traverse.git",
+  "author": "Kris Nye <krisnye@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "gtest lib",
+    "deploy": "yarn build && yarn test && yarn publish --patch --access public"
+  },
+  "dependencies": {
+    "@glas/test": "^1.0.3",
+    "@types/node": "^14.6.2"
+  }
+}
