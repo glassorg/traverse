@@ -200,7 +200,7 @@ export function defaultSkip(node) {
 }
 
 export function defaultFilter(node) {
-    return node != null && typeof node === "object" && !Array.isArray(node) && !(node instanceof Map) && node.constructor !== Object
+    return node != null && typeof node === "object" && !Array.isArray(node) && !(node instanceof Map)
 }
 
 // How do we know to skip some objects like raw objects? without knowing about Node.is?
@@ -234,7 +234,7 @@ export function traverseChildren(
         ancestors.pop()
 
         if (merge != null) {
-            let result = merge(container, changes ?? nochanges, helper, ancestors, path)
+            let result = merge(container, changes || nochanges, helper, ancestors, path)
             if (result === undefined && changes !== nochanges) {
                 result = helper.patch(container, changes)
             }
