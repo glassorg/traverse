@@ -274,5 +274,5 @@ export function traverse(
     if (callback && leave != null) {
         leaveResult = <any>leave(node, ancestors, path)
     }
-    return leaveResult || node
+    return leaveResult != null ? leaveResult : node
 }
