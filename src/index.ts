@@ -1,4 +1,69 @@
 
+/***
+ * Optional traversal object that contains information on the heirarchy and node mutations.
+ */
+export class Lookup
+{
+
+    private childToParent = new Map()
+    private previousToCurrent = new Map()
+    private currentToOriginal = new Map()
+
+    setParent(child, parent) {
+        this.childToParent.set(child, parent)
+    }
+
+    getParent(child) {
+        return this.childToParent.get(child)
+    }
+
+    getOriginal(current) {
+        return this.currentToOriginal.get(current) || current
+    }
+
+    setCurrent(previous, current) {
+        this.previousToCurrent.set(previous, current)
+        this.currentToOriginal.set(current, this.getOriginal(previous))
+        // if there's a parent, the new one must also share it
+        let parent = this.getParent(previous)
+        if (parent != null) {
+            this.setParent(current, parent)
+        }
+    }
+
+    getCurrent(previous) {
+        let current = this.previousToCurrent.get(previous)
+        return current != null ? current : previous
+    }
+
+    getAncestor(node, offset = 1) {
+        while (offset-- > 0) {
+            node = this.getParent(node)
+        }
+        return this.getCurrent(node)
+    }
+
+    findAncestor<T>(node, predicate: (a) => a is T): T | null {
+        for (let ancestor of this.getAncestors(node)) {
+            if (predicate(ancestor)) {
+                return ancestor
+            }
+        }
+        return null
+    }    
+
+    *getAncestors(node) {
+        while (node != null) {
+            let parent = this.getParent(node)
+            if (parent != null) {
+                yield this.getCurrent(parent)
+            }
+            node = parent
+        }
+    }
+
+}
+ 
 class Replace {
     readonly items: readonly any[]
     constructor(items: readonly any[]) {
@@ -47,6 +112,7 @@ export type Visitor = {
     leave?: Leave,
     skip?: Predicate,
     filter?: Predicate,
+    lookup?: Lookup,
 }
 
 const nochanges = Object.freeze({})
@@ -69,6 +135,9 @@ interface ContainerHelper<C = any, K = any, V = any> {
 const objectContainerHelper: ContainerHelper<Readonly<any>, string, any> = {
     type: "Object",
     patch(original, newValues) {
+        if (newValues === nochanges) {
+            return original
+        }
         let ctor = original.constructor as any
         let iterateValues = { ...original }
         for (let key in newValues) {
@@ -112,6 +181,9 @@ const arrayContainerHelper: ContainerHelper<Readonly<Array<any>>, number, any> =
     ...objectContainerHelper,
     type: "Array",
     patch(original, newValues) {
+        if (newValues === nochanges) {
+            return original
+        }
         let values = [...original]
         for (let key in newValues) {
             values[key] = newValues[key]
@@ -141,6 +213,9 @@ const mapContainerHelper: ContainerHelper<ReadonlyMap<any,any>, any, any> = {
     ...objectContainerHelper as any,
     type: "Map",
     patch(original: Map<any,any>, newValues) {
+        if (newValues === nochanges) {
+            return original
+        }
         let iterateMap = new Map<any,any>(original.entries())
         for (let key in newValues) {
             iterateMap.set(key, newValues[key])
@@ -211,6 +286,7 @@ export function traverseChildren(
     path: any[] = [],
     merge?: Merge,
 ) {
+    let original = container
     const helper = getContainerHelper(container)
     if (helper != null) {
         let changes: any = null
@@ -235,7 +311,7 @@ export function traverseChildren(
 
         if (merge != null) {
             let result = merge(container, changes || nochanges, helper, ancestors, path)
-            if (result === undefined && changes !== nochanges) {
+            if (result === undefined && changes != null && changes !== nochanges) {
                 result = helper.patch(container, changes)
             }
             if (result !== undefined) {
@@ -244,6 +320,11 @@ export function traverseChildren(
         }
         else if (changes != null) {
             container = helper.patch(container, changes)
+        }
+    }
+    if (container !== original) {
+        if (visitor.lookup) {
+            visitor.lookup.setCurrent(original, container)
         }
     }
 
@@ -257,6 +338,11 @@ export function traverse(
     path: string[] = []
 ): any {
     const {enter, merge, leave, skip: _skip = defaultSkip, filter = defaultFilter} = visitor
+    if (visitor.lookup) {
+        if (node != null && typeof node === "object") {
+            visitor.lookup.setParent(node, ancestors[ancestors.length - 1])
+        }
+    }
     if (node == null || _skip(node)) {
         return node
     }
@@ -273,6 +359,11 @@ export function traverse(
     let leaveResult: any = null
     if (callback && leave != null) {
         leaveResult = <any>leave(node, ancestors, path)
+    }
+    if (visitor.lookup && node != null && typeof node === "object") {
+        if (leaveResult !== node) {
+            visitor.lookup.setCurrent(node, leaveResult)
+        }
     }
     return leaveResult != null ? leaveResult : node
 }
