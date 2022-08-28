@@ -1,6 +1,6 @@
 {
   "name": "@glas/traverse",
-  "version": "1.0.5",
+  "version": "1.0.8",
   "description": "Library for traversing immutable trees and returning modified trees.",
   "main": "lib/index.js",
   "repository": "https://github.com/glassorg/traverse.git",
