@@ -43,6 +43,8 @@ export class Lookup
         return this.getCurrent(node)
     }
 
+    findAncestor(node, predicate: (a) => boolean): any
+    findAncestor<T>(node, predicate: (a) => a is T): T | null
     findAncestor<T>(node, predicate: (a) => a is T): T | null {
         for (let ancestor of this.getAncestors(node)) {
             if (predicate(ancestor)) {
@@ -105,7 +107,7 @@ export type Leave = (
     ancestors: object[],
     path: string[],
 ) => object | object[] | void
-export type Predicate = (node: any) => boolean
+export type Predicate = (node: any, ancestors: any[], path: string[]) => boolean
 export type Visitor = {
     enter?: Enter,
     merge?: Merge,
@@ -113,6 +115,7 @@ export type Visitor = {
     skip?: Predicate,
     filter?: Predicate,
     lookup?: Lookup,
+    debug?: boolean,
 }
 
 const nochanges = Object.freeze({})
@@ -343,11 +346,11 @@ export function traverse(
             visitor.lookup.setParent(node, ancestors[ancestors.length - 1])
         }
     }
-    if (node == null || _skip(node)) {
+    if (node == null || _skip(node, ancestors, path)) {
         return node
     }
 
-    const callback = filter(node)
+    const callback = filter(node, ancestors, path)
 
     let enterResult: any = null
     if (callback && enter != null) {
