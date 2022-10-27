@@ -20,5 +20,8 @@
   "dependencies": {
     "@glas/test": "^1.0.3",
     "@types/node": "^14.6.2"
+  },
+  "devDependencies": {
+    "typescript": "^4.8.3"
   }
 }

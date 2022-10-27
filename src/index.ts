@@ -44,15 +44,23 @@ export class Lookup
     }
 
     findAncestor(node, predicate: (a) => boolean): any
+    findAncestor<T>(node, type: new (...args:any[]) => T): T | null
     findAncestor<T>(node, predicate: (a) => a is T): T | null
-    findAncestor<T>(node, predicate: (a) => a is T): T | null {
+    findAncestor<T>(
+        node,
+        predicate:
+            (new (...args:any[]) => T) |
+            ((a) => a is T) |
+            ((a) => boolean)
+    ): T | null {
+        let isClass = /^[A-Z]/.test(predicate.name);
         for (let ancestor of this.getAncestors(node)) {
-            if (predicate(ancestor)) {
-                return ancestor
+            if (isClass ? ancestor instanceof predicate : (predicate as any)(ancestor)) {
+                return ancestor as T;
             }
         }
         return null
-    }    
+    }
 
     *getAncestors(node) {
         while (node != null) {
@@ -66,9 +74,9 @@ export class Lookup
 
 }
  
-class Replace {
-    readonly items: readonly any[]
-    constructor(items: readonly any[]) {
+export class Replace<T> {
+    readonly items: readonly T[]
+    constructor(items: readonly T[]) {
         this.items = items
     }
 }
@@ -83,8 +91,8 @@ class Pair {
 }
 
 export const skip = Symbol('skip')
-export function replace(...items: readonly any[]) {
-    return new Replace(items)
+export function replace<T>(...items: readonly T[]) {
+    return new Replace<T>(items)
 }
 export function pair(key, value) {
     return new Pair(key, value)
@@ -166,7 +174,7 @@ const objectContainerHelper: ContainerHelper<Readonly<any>, string, any> = {
                 setValue(name, value)
             }
         }
-        return ctor === Object ? values : new ctor(values)
+        return ctor === Object ? values : Object.assign(Object.create(Object.getPrototypeOf(original)), values);
     },
     *keys(container) {
         for (let key in container) {
